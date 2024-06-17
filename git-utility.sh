@@ -38,7 +38,7 @@ DEFAULT_CONFIG='{
   "ACCESS_TOKEN": "",
   "VERBOSE": 0,
   "DRY_RUN": 0,
-  "LOG_FILE": "git-utility.log",
+  "LOG_FILE": "$LOG_FILE",
   "TERMUX": 0
 }'
 
@@ -176,33 +176,6 @@ function banner() {
 }
 
 
-function help() {
-    echo "Usage: git-utility.sh [OPTIONS]"
-    echo ""
-    echo "Options:"
-    echo " "
-    echo "  Script Options:"
-    echo "    -v, --verbose                 Enable verbose mode"
-    echo "    -h, --help                    Display this help message"
-    echo "    -l, --log [file]              Log verbose to [file]"
-    echo " "
-    echo "  Github Operations:"
-    echo "    -s, --status [repo]           Check the status of a repository"
-    echo "    -n, --new-repo [repo]         Create a new GitHub repository"
-    echo "    -c, --clone-repo [repo]       Clone an existing GitHub repository"
-    echo "    -r, --remove-repo [repo]      Delete a GitHub repository"
-    echo " "
-    echo "  Configuration:"
-    echo "    -C, --config [file]           Load config file from [file]" 
-    echo "    -g, --get                     Display all variables in current configuration"
-    echo "    -G, --getvar [var] [value]    Retrieve value of variable in current config"
-    echo "    -S, --setvar [var] [value]    Set a configuration variable"
-    echo " "
-    echo "  --dry-run                       Show what would be done without making any changes"
-
-    echo ""
-    echo ""
-}
 
 function verbose() {
     if [ "$VERBOSE" ]; then
@@ -383,8 +356,8 @@ while (( "$#" )); do
             ;;
         --dry-run ) DRY_RUN=1; shift ;;
         -S | --setvar )
-            if [ -n "$2" ] && [ -n "$4" ]; then
-                update_config "$2" "$4"
+            if [ -n "$2" ] && [ -n "$3" ]; then
+                update_config "$2" "$3"
                 exit 0
             else
                 echo "Error: Invalid arguments for setvar. Usage: setvar [variable] [value]" >&2
@@ -412,3 +385,4 @@ main() {
 }
 
 main "$@"
+           
