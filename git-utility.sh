@@ -1,4 +1,3 @@
-─$ cat git-utility.sh
 #!/usr/bin/env bash
 #
 # git-utility.sh - Basic script to create a new GitHub repo based on the variables below. Simplifies
