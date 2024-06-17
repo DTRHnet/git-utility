@@ -23,6 +23,12 @@ BANNER="\
 CONFIG_FILE="git-utility.conf"
 GITHUB_API_URL="https://api.github.com/user/repos"
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' 
+
 # Default configuration
 DEFAULT_CONFIG='{
   "GITHUB_USERNAME": "", 
@@ -36,6 +42,41 @@ DEFAULT_CONFIG='{
   "TERMUX": 0
 }'
 
+# Logging function
+function log() {
+
+    local log_level="$1"
+    local message="$2"
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+
+    # Determine color based on log level
+    local color=""
+    case "$log_level" in
+        "INFO") color="$GREEN" ;;
+        "WARNING") color="$YELLOW" ;;
+        "ERROR") color="$RED" ;;
+        *) color="$BLUE" ;;
+    esac
+
+    # Log message to console with color and timestamp
+    echo -e "${color}${timestamp} [$log_level] ${message}${NC}"
+
+    # Check if log file exists, create it if it doesn't
+    if [ ! -f "$LOG_FILE" ]; then
+        LOG_FILE="git-utility.log"
+        touch "LOG_FILE"
+        echo -e "${timestamp} [INFO] Log file created: $LOG_FILE" >> "$LOG_FILE"
+    fi
+
+    # Log message to logfile with color and timestamp
+    echo -e "${timestamp} [$log_level] ${message}" >> "$LOG_FILE"
+
+}
+
+# Example usage:
+#log "INFO" "This is an informational message."
+#log "WARNING" "This is a warning message."
+#log "ERROR" "This is an error message."
 
 # List of valid configuration variables
 VALID_VARIABLES=("GITHUB_USERNAME" "GITHUB_EMAIL" "GITHUB_REPO" "REPO_DESCRIPTION" "ACCESS_TOKEN" "VERBOSE" "DRY_RUN" "LOG_FILE" "TERMUX")
@@ -52,8 +93,28 @@ function load_config() {
 }
 
 function print_config() {
-    echo -e "\nCurrent Configuration:\n\n $CONFIG\n"
+   jq . "$CONFIG_FILE"
 }
+
+# Update configuration in JSON file
+function update_config() {
+    local key="$1"
+    local value="$2"
+    
+    # Check if the variable is valid
+    if [[ ! " ${VALID_VARIABLES[@]} " =~ " ${key} " ]]; then
+        echo "Error: Invalid variable name '$key'."
+        echo "Valid variables are: ${VALID_VARIABLES[*]}"
+        exit 1
+    fi
+
+    jq --arg key "$key" --arg value "$value" \
+       'if $value | test("^[0-9]+$") then .[$key] |= ($value | tonumber) else .[$key] |= $value end' \
+       "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    echo "Configuration updated successfully."
+}
+
+
 # Check configuration file integrity
 function check_config_integrity() {
     if [ ! -f "$CONFIG_FILE" ]; then
@@ -84,11 +145,36 @@ function log() {
     fi
 }
 
+function center_text() {
+    local text="$1"
+    local terminal_width=$(tput cols)
+    local text_length=${#text}
+    local padding=$(( (terminal_width - text_length) / 2 ))
+
+    # Ensure padding is not negative
+    if (( padding < 0 )); then
+        padding=0
+    fi
+
+    printf "%*s%s\n" $padding "" "$text"
+}
+
+function is_termux() {
+    if [ -d "$PREFIX" ] && [ -x "$(command -v termux-info)" ]; then
+        TERMUX=1
+    else
+        TERMUX=0
+    fi
+}
+
 function banner() {
-    echo "$BANNER"
+    while IFS= read -r line; do
+        center_text "$line"
+    done <<< "$BANNER"
     check_config_integrity
     load_config
 }
+
 
 function help() {
     echo "Usage: git-utility.sh [OPTIONS]"
@@ -231,6 +317,7 @@ function checkStatus() {
     git status
 }
 
+
 # Parse arguments
 while (( "$#" )); do
     case "$1" in
@@ -309,22 +396,10 @@ while (( "$#" )); do
     esac
 done
 
-function is_termux() {
-    if [ -d "$PREFIX" ] && [ -x "$(command -v termux-info)" ]; then
-        TERMUX=1
-    else
-        TERMUX=0
-    fi
-}
-
-function error_checks() {
+main() {
+    load_config
     is_termux
     banner
-}
-
-main() {
-    error_checks
-
     if [ -n "$ACTION" ]; then
         if [ "$ACTION" == "newRepo" ] || [ "$ACTION" == "cloneRepo" ] || [ "$ACTION" == "removeRepo" ]; then
             check_GITHUB_REPO
@@ -337,4 +412,3 @@ main() {
 }
 
 main "$@"
-              
